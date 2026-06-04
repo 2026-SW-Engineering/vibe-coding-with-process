@@ -1,0 +1,37 @@
+stateDiagram-v2
+    [*] --> PAYMENT_PENDING : 주문 생성 (재고 차감)
+
+    PAYMENT_PENDING --> PAID : 결제 성공
+    PAYMENT_PENDING --> CANCELLED : 결제 실패 (재고 복원)
+
+    PAID --> PREPARING : 관리자, 상품 출고
+    PAID --> CANCELLED : 회원, 전체 취소 (재고 복원)
+
+    PREPARING --> SHIPPING : 배송시스템, 배송 진행
+    PREPARING --> CANCELLED : 회원, 전체 취소 (재고 복원)
+
+    SHIPPING --> DELIVERED : 배송시스템, 배송 완료
+
+    DELIVERED --> REFUND_REQUESTED : 회원, 부분환불 요청 (7일 이내)
+
+    REFUND_REQUESTED --> PARTIALLY_REFUNDED : 관리자, 환불 승인 (부분 재고 복원)
+    REFUND_REQUESTED --> DELIVERED : 관리자, 환불 거부 (원복)
+
+    CANCELLED --> [*]
+    DELIVERED --> [*]
+    PARTIALLY_REFUNDED --> [*]
+
+    note right of SHIPPING
+        배송중 상태에서는
+        취소도 환불도 불가능
+        (나가는 전이가 DELIVERED뿐)
+    end note
+
+    note right of REFUND_REQUESTED
+        부분환절 요청 상태
+        환불금액 = 확정가격 × 환불수량
+        이미 부분환불된 주문은
+        재환불 불가능
+    end note
+
+    %% 보이지 않는 유니코드 공백으로 마지막 줄 잘림 방지 ‌‌‌‌

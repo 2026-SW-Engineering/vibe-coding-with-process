@@ -1,0 +1,191 @@
+classDiagram
+    %% 사용자 관련
+    class User {
+        int user_id
+        string email
+        string password_hash
+        string name
+        string role: 'customer' or 'admin'
+        timestamp created_at
+        timestamp updated_at
+
+        +register(email, password, name)
+        +login(email, password)
+        +logout()
+        +update_password(old_pwd, new_pwd)
+    }
+
+    class Member {
+        +add_to_cart(product_id, quantity)
+        +view_cart()
+        +view_cart_items()
+        +update_cart_item_quantity(cart_item_id, new_qty)
+        +delete_from_cart(cart_item_id)
+        +clear_cart()
+        +create_order(selected_items, address, phone)
+        +view_my_orders()
+        +view_order_detail(order_id)
+        +request_full_cancel(order_id)
+        +request_partial_refund(order_id, refund_items, reason)
+    }
+
+    class Admin {
+        +change_product_price(product_id, new_price)
+        +perform_product_shipment(order_id)
+        +view_all_orders()
+        +view_order_detail(order_id)
+        +view_refund_requests()
+        +approve_refund(refund_id)
+        +reject_refund(refund_id)
+    }
+
+    %% 상품 관련
+    class Product {
+        int product_id
+        string name
+        int current_price
+        int stock
+        timestamp created_at
+        timestamp updated_at
+
+        +get_product_list()
+        +get_product_detail(product_id)
+        +update_price(new_price)
+        +update_stock(quantity_delta)
+    }
+
+    %% 장바구니 관련
+    class Cart {
+        int cart_id
+        int member_id
+        timestamp created_at
+        timestamp updated_at
+
+        +add_item(product_id, quantity)
+        +remove_item(cart_item_id)
+        +update_quantity(cart_item_id, new_qty)
+        +get_cart()
+        +clear_cart()
+        +get_total_amount()
+    }
+
+    class CartItem {
+        int cart_item_id
+        int cart_id
+        int product_id
+        int quantity
+        int price_at_add_time
+        timestamp added_at
+    }
+
+    %% 주문 관련
+    class Order {
+        int order_id
+        int member_id
+        int total_amount
+        string status
+        string address
+        string phone
+        timestamp created_at
+        timestamp updated_at
+
+        +create_order(cart_items, address, phone)
+        +get_order_detail()
+        +request_cancel()
+        +request_refund(items, reason)
+        +process_payment(success_flag)
+        +apply_refund(amount)
+        +transition_status(new_status)
+    }
+
+    class OrderItem {
+        int order_item_id
+        int order_id
+        int product_id
+        int quantity
+        int confirmed_price
+        string item_status
+        timestamp created_at
+    }
+
+    %% 결제 관련
+    class Payment {
+        int payment_id
+        int order_id
+        int amount
+        string status
+        string payment_method
+        timestamp paid_at
+
+        +process_payment(order_id, amount)
+        +handle_payment_failure(order_id)
+        +get_payment_status(payment_id)
+    }
+
+    %% 환불 관련
+    class Refund {
+        int refund_id
+        int order_id
+        int member_id
+        int refund_amount
+        string type
+        string status
+        string reason
+        timestamp requested_at
+        timestamp processed_at
+
+        +request_refund(type, items, reason)
+        +approve_refund()
+        +reject_refund()
+        +calculate_refund_amount(items)
+    }
+
+    class RefundItem {
+        int refund_item_id
+        int refund_id
+        int order_item_id
+        int quantity_to_refund
+        int refund_amount
+    }
+
+    %% 배송 시스템 (외부)
+    class ShippingSystem {
+        <<external>>
+
+        +notify_shipping_start(order_id)
+        +notify_shipping_in_progress(order_id)
+        +notify_delivery_complete(order_id)
+        +update_order_status(order_id, status)
+    }
+
+    %% 상속 관계
+    User <|-- Member
+    User <|-- Admin
+
+    %% 연관 관계
+    Member "*" --> "1" Cart : has
+    Member "1" --> "*" Order : creates
+    Member "1" --> "*" Refund : requests
+
+    Product "1" --> "*" CartItem : in
+    Product "1" --> "*" OrderItem : in
+
+    Cart "1" --> "*" CartItem : contains
+
+    Order "1" --> "*" OrderItem : contains
+    Order "1" --> "0..1" Payment : processed_by
+    Order "1" --> "*" Refund : subject_of
+    Order "1" --> "1" ShippingSystem : synchronized_with
+
+    Refund "1" --> "*" RefundItem : includes
+
+    OrderItem "1" --> "0..*" RefundItem : target_of
+
+    %% 주석
+    note for OrderItem "확정 가격은 주문 당시 고정\n이후 상품 가격 변경에 영향 없음\nitem_status: ordered/shipped/completed/refunded"
+    
+    note for CartItem "장바구니의 가격은 현재가격\n주문 시 confirmed_price로 전환"
+
+    note for Order "status: 결제대기/결제완료/배송준비/배송중/배송완료/취소완료/환불요청/부분환불\ntotal_amount = Σ(confirmed_price × qty)\n부분환불 후: total_amount - Σ(환불금액)"
+
+    note for Refund "type: full_cancel(즉시) / partial_refund(승인대기)\nstatus: pending/approved/rejected/completed"

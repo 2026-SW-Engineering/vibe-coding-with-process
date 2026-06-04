@@ -1,0 +1,52 @@
+%% 쇼핑몰 주문 시스템 - 유스케이스 다이어그램
+%% Mermaid는 표준 UML 유스케이스 표기를 직접 지원하지 않으므로 flowchart로 표현한다.
+%% 사각형 = 행위자(Actor), 둥근 모서리 = 유스케이스, 점선 = <<include>>
+
+flowchart LR
+    %% ===== Actors =====
+    Guest["비회원<br/>(계정 자체가 없음)"]
+    Member["회원"]
+    Admin["관리자"]
+    PaymentSys["결제시스템(외부)"]
+    DeliverySys["배송시스템(외부)"]
+
+    %% ===== Use Cases =====
+    UC_Signup(["회원가입"])
+    UC_ViewProduct(["상품 조회"])
+    UC_Cart(["장바구니 관리"])
+    UC_CreateOrder(["주문 생성"])
+    UC_Payment(["결제"])
+    UC_ViewOrder(["주문 조회"])
+    UC_CancelOrder(["주문 전체 취소"])
+    UC_PartialRefund(["부분 환불 요청"])
+    UC_Auth(["로그인/로그아웃"])
+    UC_ChangePrice(["상품 가격 변경"])
+    UC_RefundDecision(["환불 승인/거부"])
+    UC_Shipout(["상품 출고"])
+    UC_DeliveryState(["배송 상태 전이"])
+
+    %% ===== 비회원 =====
+    Guest --- UC_Signup
+    Guest --- UC_ViewProduct
+
+    %% ===== 회원 =====
+    Member --- UC_ViewProduct
+    Member --- UC_Cart
+    Member --- UC_CreateOrder
+    Member --- UC_ViewOrder
+    Member --- UC_CancelOrder
+    Member --- UC_PartialRefund
+    Member --- UC_Auth
+
+    %% ===== 관리자 =====
+    Admin --- UC_Auth
+    Admin --- UC_ChangePrice
+    Admin --- UC_RefundDecision
+    Admin --- UC_Shipout
+
+    %% ===== include 관계 =====
+    UC_CreateOrder -. "&laquo;include&raquo;" .-> UC_Payment
+
+    %% ===== 외부 시스템 =====
+    UC_Payment --- PaymentSys
+    UC_DeliveryState --- DeliverySys

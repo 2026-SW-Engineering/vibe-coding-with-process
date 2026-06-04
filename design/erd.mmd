@@ -1,0 +1,97 @@
+erDiagram
+    USER ||--o{ CART : has
+    USER ||--o{ ORDER : places
+    USER ||--o{ REFUND : requests
+    PRODUCT ||--o{ CART_ITEM : "added to"
+    PRODUCT ||--o{ ORDER_ITEM : "ordered in"
+    CART ||--o{ CART_ITEM : contains
+    ORDER ||--o{ ORDER_ITEM : contains
+    ORDER ||--o{ PAYMENT : "0..1"
+    ORDER ||--o{ REFUND : "subject of"
+    ORDER_ITEM ||--o{ REFUND_ITEM : "refund target"
+    REFUND ||--o{ REFUND_ITEM : contains
+
+    USER {
+        int user_id PK
+        string email UK "이메일은 시스템 내 유일"
+        string password_hash "평문 저장 금지"
+        string name
+        string role "customer or admin"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    PRODUCT {
+        int product_id PK
+        string name
+        int current_price "현재 가격 (변동 가능)"
+        int stock "현재 재고 (≥ 0)"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CART {
+        int cart_id PK
+        int user_id FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CART_ITEM {
+        int cart_item_id PK
+        int cart_id FK
+        int product_id FK
+        int quantity "주문 수량"
+        int price_at_add_time "추가 시점의 가격"
+        timestamp added_at "추가 시간"
+    }
+
+    ORDER {
+        int order_id PK
+        int user_id FK
+        int total_amount "Σ(confirmed_price × qty)"
+        string status "결제대기/결제완료/배송준비/배송중/배송완료/취소완료/환불요청/부분환불"
+        string address "배송 주소"
+        string phone "배송 전화"
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    ORDER_ITEM {
+        int order_item_id PK
+        int order_id FK
+        int product_id FK
+        int quantity "주문 수량"
+        int confirmed_price "주문 당시 가격 (절대 변함 없음)"
+        string item_status "ordered/shipped/completed/refunded"
+        timestamp created_at
+    }
+
+    PAYMENT {
+        int payment_id PK
+        int order_id FK "1:1 관계"
+        int amount "결제 금액"
+        string status "pending/completed/failed"
+        string payment_method "mock"
+        timestamp paid_at
+    }
+
+    REFUND {
+        int refund_id PK
+        int order_id FK
+        int user_id FK
+        int refund_amount "부분환불액"
+        string type "full_cancel(즉시)/partial_refund(승인대기)"
+        string status "pending/approved/rejected/completed"
+        string reason "환불 사유"
+        timestamp requested_at
+        timestamp processed_at
+    }
+
+    REFUND_ITEM {
+        int refund_item_id PK
+        int refund_id FK
+        int order_item_id FK
+        int quantity_to_refund "환불 수량"
+        int refund_amount "confirmed_price × qty"
+    }

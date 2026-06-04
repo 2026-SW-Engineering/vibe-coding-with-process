@@ -1,0 +1,303 @@
+%% 시퀀스 다이어그램 1: 정상 주문 흐름 (장바구니 → 주문 → 결제 성공)
+sequenceDiagram
+    actor M as Member
+    participant API as Shopping API
+    participant DB as Database
+    participant PaymentGW as Payment GW (Mock)
+    participant ShippingSystem as Shipping System
+
+    Note over M,ShippingSystem: 시나리오 1: 정상 주문 흐름
+
+    rect rgb(200, 220, 255)
+    Note over M,API: 1단계: 장바구니 담기
+    M->>API: POST /cart {product_id: 1, qty: 2}
+    API->>DB: SELECT product WHERE id=1
+    DB-->>API: {id: 1, name: 노트북, current_price: 1,000,000, stock: 10}
+    API->>DB: INSERT cart_item {product_id: 1, qty: 2, price_at_add_time: 1,000,000}
+    API-->>M: {cart_item_id: 101}
+    end
+
+    rect rgb(200, 255, 220)
+    Note over M,API: 2단계: 주문 생성 (핵심 - 원자적 처리)
+    M->>API: POST /orders {items: [{product_id: 1, qty: 2}], address: "서울시...", phone: "010-..."}
+    
+    API->>DB: BEGIN TRANSACTION
+    
+    par 재고 확인 (동시성 제어)
+        API->>DB: SELECT stock FROM product WHERE id=1 FOR UPDATE [Pessimistic Lock]
+        DB-->>API: stock = 10
+    and 재고 충분?
+        API->>API: qty(2) <= stock(10)? YES ✅
+    end
+    
+    par 원자적 처리 (Atomic)
+        API->>DB: INSERT order {id: 1, member_id: 100, status: '결제대기', total_amount: 2,000,000}
+        API->>DB: INSERT order_item {order_id: 1, product_id: 1, qty: 2, confirmed_price: 1,000,000}
+        API->>DB: UPDATE product SET stock = 10 - 2 = 8
+        API->>DB: DELETE FROM cart_item WHERE member_id=100
+    end
+    
+    API->>DB: COMMIT TRANSACTION
+    DB-->>API: success
+    API-->>M: {order_id: 1, status: '결제대기', total_amount: 2,000,000}
+    end
+
+    rect rgb(255, 220, 200)
+    Note over M,API: 3단계: 결제 처리
+    M->>PaymentGW: Mock 결제 선택 (성공)
+    PaymentGW-->>M: {payment_id: PAY-001, status: completed}
+    
+    M->>API: POST /orders/1/payment {payment_id: PAY-001}
+    API->>DB: UPDATE order SET status='결제완료'
+    API-->>M: {order_id: 1, status: '결제완료'}
+    end
+
+    Note over M,API: 주문 완료 ✅
+
+---
+
+%% 시퀀스 다이어그램 2: 결제 실패 (재고 자동 복원)
+sequenceDiagram
+    actor M as Member
+    participant API as Shopping API
+    participant DB as Database
+    participant PaymentGW as Payment GW (Mock)
+
+    Note over M,PaymentGW: 시나리오 2: 결제 실패 처리 (재고 복원)
+
+    rect rgb(255, 220, 200)
+    Note over M,API: 주문은 성공했으나 결제 실패
+    M->>API: POST /orders {items: [...]}
+    API->>DB: [주문 생성 + 재고 차감: 10 → 8]
+    DB-->>API: {order_id: 1, status: '결제대기', stock: 8}
+    API-->>M: order_id: 1 생성됨
+    end
+
+    rect rgb(255, 150, 150)
+    Note over M,API: 결제 실패 → 자동 롤백
+    M->>PaymentGW: Mock 결제 선택 (실패)
+    PaymentGW-->>M: {status: failed, message: "카드 거절"}
+    
+    M->>API: POST /orders/1/payment (실패 알림)
+    
+    API->>DB: BEGIN TRANSACTION
+    
+    par 재고 자동 복원 (Rollback)
+        API->>DB: SELECT order_item FROM order_item WHERE order_id=1
+        API->>DB: FOR EACH order_item: UPDATE product SET stock = stock + item.qty
+        Note over DB: stock: 8 → 10 (완전히 복원!)
+    end
+    
+    par 주문 상태 변경
+        API->>DB: UPDATE order SET status='취소완료'
+    end
+    
+    API->>DB: COMMIT TRANSACTION
+    DB-->>API: success
+    
+    API-->>M: {order_id: 1, status: '취소완료', refund_amount: 2,000,000}
+    end
+
+    Note over M,API: 재고 복구 완료 ✅ (자동)
+
+---
+
+%% 시퀀스 다이어그램 3: 동시 주문 (재고 경합)
+sequenceDiagram
+    actor MA as Member A
+    actor MB as Member B
+    participant API as Shopping API
+    participant DB as Database
+
+    Note over MA,DB: 시나리오 3: 동시 주문 (재고 경합)
+    Note over MA,DB: 재고: Product = 1개
+
+    par Member A
+        MA->>API: POST /orders {product: 1, qty: 1}
+    and Member B
+        MB->>API: POST /orders {product: 1, qty: 1}
+    end
+
+    rect rgb(200, 200, 255)
+    Note over API,DB: 거의 동시에 두 요청 도착
+
+    par Thread A: Lock 획득
+        API->>DB: BEGIN TRANSACTION (A)
+        API->>DB: SELECT stock FROM product WHERE id=1 FOR UPDATE
+        DB-->>API: stock = 1 ✅ (A가 Lock 획득!)
+        API->>API: qty(1) <= stock(1)? YES
+    and Thread B: Lock 대기
+        API->>DB: BEGIN TRANSACTION (B)
+        API->>DB: SELECT stock FROM product WHERE id=1 FOR UPDATE
+        Note over DB: B는 A의 Lock 대기 중... ⏳
+    end
+    end
+
+    rect rgb(150, 200, 150)
+    Note over API,DB: A: 재고 충분 → 진행
+    API->>DB: INSERT order_a {status: '결제대기'}
+    API->>DB: INSERT order_item_a {qty: 1}
+    API->>DB: UPDATE product SET stock = 1 - 1 = 0
+    API->>DB: COMMIT (A)
+    DB-->>API: success
+    API-->>MA: {order_id: 1, status: '결제대기'} ✅
+    end
+
+    rect rgb(200, 150, 150)
+    Note over API,DB: B: Lock 획득 (A가 release한 후)
+    API->>DB: SELECT stock FROM product WHERE id=1
+    DB-->>API: stock = 0 ❌
+    API->>API: qty(1) > stock(0)? YES → Error!
+    API->>DB: ROLLBACK (B)
+    API-->>MB: {error: 'INSUFFICIENT_STOCK', message: 'Only 0 available'} ❌
+    end
+
+    Note over MA,MB: 결과: A 성공, B 실패 ✅ (초과 판매 0)
+
+---
+
+%% 시퀀스 다이어그램 4: 전체 취소 (즉시, 관리자 승인 불필요)
+sequenceDiagram
+    actor M as Member
+    participant API as Shopping API
+    participant DB as Database
+
+    Note over M,DB: 시나리오 4: 전체 취소 (즉시 처리, 관리자 승인 X)
+
+    rect rgb(255, 200, 150)
+    Note over M,API: 주문 상태 확인
+    M->>API: GET /orders/1
+    API->>DB: SELECT order WHERE id=1
+    DB-->>API: {order_id: 1, status: '결제완료', items: [...]}
+    API-->>M: order details
+    end
+
+    rect rgb(255, 150, 150)
+    Note over M,API: 즉시 취소 (관리자 승인 불필요!)
+    M->>API: POST /orders/1/cancel
+    
+    API->>API: status in ['결제완료', '배송준비']? YES ✅
+    
+    API->>DB: BEGIN TRANSACTION
+    
+    par 취소 처리
+        API->>DB: UPDATE order SET status='취소완료'
+        
+        par 재고 복구
+            API->>DB: SELECT order_item FROM order_item WHERE order_id=1
+            API->>DB: FOR EACH order_item: UPDATE product SET stock = stock + qty
+        end
+    end
+    
+    API->>DB: COMMIT TRANSACTION
+    DB-->>API: success
+    
+    API-->>M: {order_id: 1, status: '취소완료', refund_amount: 2,000,000}
+    end
+
+    Note over M,API: 취소 완료 ✅ (즉시!)
+
+---
+
+%% 시퀀스 다이어그램 5: 부분 환불 (관리자 승인)
+sequenceDiagram
+    actor M as Member
+    participant API as Shopping API
+    participant DB as Database
+    actor A as Admin
+
+    Note over M,A: 시나리오 5: 부분 환불 (배송완료 후, 관리자 승인)
+
+    rect rgb(200, 255, 150)
+    Note over M,API: 환불 가능 조건 확인
+    M->>API: GET /orders/1
+    API->>DB: SELECT order WHERE id=1
+    DB-->>API: {status: '배송완료', updated_at: '2026-05-20'}
+    API->>API: 배송완료로부터 7일 이내? YES ✅
+    API->>API: 이미 부분환불된 주문? NO ✅
+    API-->>M: order details
+    end
+
+    rect rgb(200, 220, 255)
+    Note over M,API: 부분 환불 요청 (관리자 승인 대기)
+    M->>API: POST /orders/1/refund {<br/>  type: 'partial',<br/>  items: [{order_item_id: 101, qty: 1}],<br/>  reason: '상품 불량'<br/>}
+    
+    API->>DB: BEGIN TRANSACTION
+    
+    par 환불 요청 기록
+        API->>DB: INSERT refund {<br/>  refund_id: REF-001,<br/>  order_id: 1,<br/>  status: 'pending'<br/>}
+        API->>DB: INSERT refund_item {<br/>  refund_id: REF-001,<br/>  order_item_id: 101,<br/>  qty_to_refund: 1,<br/>  refund_amount: 1,000,000<br/>}
+        API->>DB: UPDATE order SET status='환불요청'
+    end
+    
+    API->>DB: COMMIT TRANSACTION
+    DB-->>API: success
+    
+    API-->>M: {refund_id: REF-001, status: 'pending', refund_amount: 1,000,000}
+    end
+
+    Note over M,API: 환불 요청 대기 (관리자 승인 필요)
+
+    rect rgb(255, 200, 150)
+    Note over A,API: 관리자가 환불 승인
+    A->>API: PATCH /refunds/REF-001 {status: 'approved'}
+    
+    API->>DB: BEGIN TRANSACTION
+    
+    par 환불 처리
+        API->>DB: UPDATE refund SET status='approved'
+        API->>DB: UPDATE order_item SET item_status='refunded'
+        par 재고 복구
+            API->>DB: UPDATE product SET stock = stock + 1
+        and 주문 상태 변경
+            API->>DB: UPDATE order SET status='부분환불'
+        end
+    end
+    
+    API->>DB: COMMIT TRANSACTION
+    DB-->>API: success
+    
+    API-->>A: {refund_id: REF-001, status: 'approved'}
+    end
+
+    Note over M,A: 부분 환불 완료 ✅
+
+---
+
+%% 시퀀스 다이어그램 6: 부분 환불 거부
+sequenceDiagram
+    actor M as Member
+    participant API as Shopping API
+    participant DB as Database
+    actor A as Admin
+
+    Note over M,A: 시나리오 6: 부분 환불 거부 (원복)
+
+    rect rgb(255, 200, 150)
+    Note over A,API: 관리자가 환불 거부
+    A->>API: PATCH /refunds/REF-001 {status: 'rejected'}
+    
+    API->>DB: BEGIN TRANSACTION
+    
+    par 거부 처리 (변경 없음)
+        API->>DB: UPDATE refund SET status='rejected'
+        API->>DB: UPDATE order SET status='배송완료' (환불요청 직전으로 복귀)
+    end
+    
+    API->>DB: COMMIT TRANSACTION
+    DB-->>API: success
+    
+    API-->>A: {refund_id: REF-001, status: 'rejected'}
+    end
+
+    rect rgb(200, 200, 200)
+    Note over M,API: 거부 후 상태
+    A->>API: GET /refunds/REF-001
+    API->>DB: SELECT refund WHERE id=REF-001
+    DB-->>API: {refund_id: REF-001, status: 'rejected', order_status: '배송완료'}
+    API-->>A: refund details
+    end
+
+    Note over M,A: 재고/금액 변경 없음, 주문 상태 원복 ✅
+
+    %% 보이지 않는 유니코드 공백으로 마지막 줄 잘림 방지 ‌‌‌‌
