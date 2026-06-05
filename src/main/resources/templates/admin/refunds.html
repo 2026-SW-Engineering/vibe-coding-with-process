@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head th:replace="~{layout/base :: head('환불 요청 관리')}">
+  <meta charset="UTF-8"/><title>환불 요청 관리</title>
+</head>
+<body>
+<nav th:replace="~{layout/base :: nav}"></nav>
+
+<div class="container py-4">
+  <div class="d-flex justify-content-between align-items-center mb-4">
+    <h4 class="fw-bold mb-0">환불 요청 관리</h4>
+    <a th:href="@{/admin/orders}" class="btn btn-outline-secondary btn-sm">전체 주문 목록</a>
+  </div>
+
+  <div th:if="${message}" class="alert alert-success alert-dismissible fade show">
+    <span th:text="${message}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+  <div th:if="${error}" class="alert alert-danger alert-dismissible fade show">
+    <span th:text="${error}"></span>
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+  </div>
+
+  <div th:if="${refunds.empty}" class="text-center py-5 text-muted">
+    <i class="bi bi-check-all display-4 d-block mb-3"></i>
+    <p>처리 대기 중인 환불 요청이 없습니다.</p>
+  </div>
+
+  <div th:each="refund : ${refunds}" class="card shadow-sm border-0 mb-4">
+    <div class="card-header bg-white d-flex justify-content-between align-items-center py-3">
+      <div>
+        <span class="fw-semibold">환불 요청 #<span th:text="${refund.refundId}"></span></span>
+        <span class="text-muted small ms-3">주문 #<span th:text="${refund.order.orderId}"></span></span>
+      </div>
+      <span class="text-muted small"
+            th:text="${#temporals.format(refund.requestedAt, 'yyyy-MM-dd HH:mm')}"></span>
+    </div>
+    <div class="card-body">
+      <div class="row mb-3">
+        <div class="col-sm-6">
+          <span class="text-muted small">요청자:</span>
+          <span class="fw-semibold ms-1" th:text="${refund.user.email}"></span>
+        </div>
+        <div class="col-sm-6">
+          <span class="text-muted small">환불 사유:</span>
+          <span class="ms-1" th:text="${refund.reason} ?: '(미입력)'"></span>
+        </div>
+      </div>
+
+      <div class="table-responsive mb-3">
+        <table class="table table-sm align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th>상품명</th>
+              <th class="text-center">환불 수량</th>
+              <th class="text-end">환불 금액</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr th:each="item : ${refund.items}">
+              <td th:text="${item.orderItem.product.name}"></td>
+              <td class="text-center" th:text="${item.quantityToRefund}"></td>
+              <td class="text-end"
+                  th:text="${#numbers.formatInteger(item.refundAmount, 0, 'COMMA')} + '원'"></td>
+            </tr>
+          </tbody>
+          <tfoot class="table-light">
+            <tr>
+              <td colspan="2" class="text-end fw-bold">총 환불 금액</td>
+              <td class="text-end fw-bold text-danger"
+                  th:text="${#numbers.formatInteger(refund.refundAmount, 0, 'COMMA')} + '원'"></td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div class="d-flex gap-2">
+        <form th:action="@{/admin/refunds/{id}/approve(id=${refund.refundId})}" method="post">
+          <button type="submit" class="btn btn-success">
+            <i class="bi bi-check-lg me-1"></i>환불 승인
+          </button>
+        </form>
+        <form th:action="@{/admin/refunds/{id}/reject(id=${refund.refundId})}" method="post">
+          <button type="submit" class="btn btn-outline-danger">
+            <i class="bi bi-x-lg me-1"></i>환불 거부
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<th:block th:replace="~{layout/base :: scripts}"></th:block>
+</body>
+</html>

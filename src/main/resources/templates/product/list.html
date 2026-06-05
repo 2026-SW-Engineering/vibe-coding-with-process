@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<head th:replace="~{layout/base :: head('상품 목록')}">
+  <meta charset="UTF-8"/><title>상품 목록</title>
+</head>
+<body>
+<nav th:replace="~{layout/base :: nav}"></nav>
+
+<div class="container py-4">
+  <h4 class="fw-bold mb-4">상품 목록</h4>
+
+  <div class="row row-cols-1 row-cols-sm-2 row-cols-lg-3 g-4">
+    <div class="col" th:each="p : ${products}">
+      <div class="card h-100 shadow-sm border-0">
+        <div class="card-body">
+          <h5 class="card-title fw-bold" th:text="${p.name}"></h5>
+          <p class="card-text fs-5 text-success fw-semibold"
+             th:text="${#numbers.formatInteger(p.currentPrice, 0, 'COMMA')} + '원'"></p>
+        </div>
+        <div class="card-footer bg-white border-0 pb-3" sec:authorize="isAuthenticated()">
+          <form th:action="@{/cart/items}" method="post">
+            <input type="hidden" name="productId" th:value="${p.productId}"/>
+            <div class="input-group input-group-sm">
+              <input type="number" name="quantity" value="1" min="1" class="form-control"/>
+              <button class="btn btn-primary" type="submit">
+                <i class="bi bi-cart-plus me-1"></i>담기
+              </button>
+            </div>
+          </form>
+        </div>
+        <div class="card-footer bg-white border-0 pb-3" sec:authorize="isAnonymous()">
+          <a th:href="@{/auth/login}" class="btn btn-outline-secondary btn-sm w-100">
+            로그인 후 구매 가능
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<th:block th:replace="~{layout/base :: scripts}"></th:block>
+</body>
+</html>
