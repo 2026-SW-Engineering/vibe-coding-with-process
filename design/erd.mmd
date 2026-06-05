@@ -1,5 +1,5 @@
 erDiagram
-    USER ||--o{ CART : has
+    USER ||--|| CART : has
     USER ||--o{ ORDER : places
     USER ||--o{ REFUND : requests
     PRODUCT ||--o{ CART_ITEM : "added to"
@@ -63,7 +63,7 @@ erDiagram
         int product_id FK
         int quantity "주문 수량"
         int confirmed_price "주문 당시 가격 (절대 변함 없음)"
-        string item_status "ordered/shipped/completed/refunded"
+        string item_status "ordered/refunded"
         timestamp created_at
     }
 
@@ -81,7 +81,7 @@ erDiagram
         int order_id FK
         int user_id FK
         int refund_amount "부분환불액"
-        string type "full_cancel(즉시)/partial_refund(승인대기)"
+        string type "partial_refund(승인대기) — 부분환불 전용"
         string status "pending/approved/rejected/completed"
         string reason "환불 사유"
         timestamp requested_at

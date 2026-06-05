@@ -182,10 +182,10 @@ classDiagram
     OrderItem "1" --> "0..*" RefundItem : target_of
 
     %% 주석
-    note for OrderItem "확정 가격은 주문 당시 고정\n이후 상품 가격 변경에 영향 없음\nitem_status: ordered/shipped/completed/refunded"
+    note for OrderItem "확정 가격은 주문 당시 고정\n이후 상품 가격 변경에 영향 없음\nitem_status: ordered/refunded"
     
     note for CartItem "장바구니의 가격은 현재가격\n주문 시 confirmed_price로 전환"
 
     note for Order "status: 결제대기/결제완료/배송준비/배송중/배송완료/취소완료/환불요청/부분환불\ntotal_amount = Σ(confirmed_price × qty)\n부분환불 후: total_amount - Σ(환불금액)"
 
-    note for Refund "type: full_cancel(즉시) / partial_refund(승인대기)\nstatus: pending/approved/rejected/completed"
+    note for Refund "type: partial_refund(승인대기) — 부분환불 전용\nstatus: pending/approved/rejected/completed"
