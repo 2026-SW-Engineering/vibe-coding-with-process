@@ -9,13 +9,18 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        primary: {
-          50: "#eef2ff",
-          100: "#e0e7ff",
-          500: "#6366f1",
-          600: "#4f46e5",
-          700: "#4338ca",
+        brand: {
+          50: "#fff5f5",
+          100: "#ffe0e0",
+          500: "#E53935",
+          600: "#C62828",
+          700: "#B71C1C",
         },
+        dark: "#1A1A1A",
+        mid: "#555555",
+        soft: "#888888",
+        border: "#E0E0E0",
+        surface: "#F5F5F5",
       },
     },
   },

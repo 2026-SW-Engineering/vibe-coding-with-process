@@ -29,69 +29,65 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-purple-50 flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <Link href="/" className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-            🛍️ VibeMall
+    <div className="min-h-screen bg-[#F5F5F5] flex items-center justify-center p-4">
+      <div className="w-full max-w-sm">
+        <div className="text-center mb-6">
+          <Link href="/" className="inline-flex items-center gap-1">
+            <span className="text-2xl font-black text-[#1A1A1A]">VIBE</span>
+            <span className="text-2xl font-black text-[#E53935]">MALL</span>
           </Link>
-          <p className="text-slate-500 mt-2">쇼핑을 시작하려면 로그인하세요</p>
         </div>
 
-        <div className="bg-white rounded-3xl shadow-xl p-8 border border-slate-100">
-          <h1 className="text-2xl font-bold text-slate-800 mb-6">로그인</h1>
+        <div className="bg-white border border-[#E0E0E0] p-8">
+          <h1 className="text-lg font-bold text-[#1A1A1A] mb-5">로그인</h1>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">이메일</label>
+              <label className="block text-xs font-semibold text-[#444] mb-1">이메일</label>
               <input
                 type="email"
                 value={email}
                 onChange={e => setEmail(e.target.value)}
                 required
                 placeholder="example@email.com"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all"
+                className="w-full px-3 py-2.5 border border-[#D8D8D8] text-sm outline-none focus:border-[#1A1A1A] transition-colors"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1.5">비밀번호</label>
+              <label className="block text-xs font-semibold text-[#444] mb-1">비밀번호</label>
               <input
                 type="password"
                 value={password}
                 onChange={e => setPassword(e.target.value)}
                 required
                 placeholder="비밀번호 입력"
-                className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:border-transparent transition-all"
+                className="w-full px-3 py-2.5 border border-[#D8D8D8] text-sm outline-none focus:border-[#1A1A1A] transition-colors"
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 text-red-600 text-sm px-4 py-3 rounded-xl border border-red-100">
-                {error}
-              </div>
+              <p className="text-xs text-[#E53935] bg-[#FFF5F5] border border-[#FFCDD2] px-3 py-2">{error}</p>
             )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:bg-indigo-400 text-white font-bold py-3 rounded-xl transition-colors"
+              className="w-full bg-[#1A1A1A] hover:bg-[#333] disabled:bg-[#AAA] text-white font-bold py-2.5 text-sm transition-colors"
             >
               {loading ? "로그인 중..." : "로그인"}
             </button>
           </form>
 
-          <div className="mt-6 p-4 bg-slate-50 rounded-xl text-sm text-slate-500">
-            <p className="font-medium text-slate-600 mb-1">테스트 계정</p>
+          <div className="mt-5 p-3 bg-[#F8F8F8] border border-[#EBEBEB] text-xs text-[#666]">
+            <p className="font-semibold text-[#444] mb-1">테스트 계정</p>
             <p>일반: user@shop.com / user123</p>
             <p>관리자: admin@shop.com / admin123</p>
           </div>
 
-          <p className="mt-6 text-center text-sm text-slate-500">
+          <p className="mt-5 text-center text-xs text-[#888]">
             계정이 없으신가요?{" "}
-            <Link href="/register" className="text-indigo-600 font-semibold hover:underline">
-              회원가입
-            </Link>
+            <Link href="/register" className="text-[#E53935] font-semibold hover:underline">회원가입</Link>
           </p>
         </div>
       </div>

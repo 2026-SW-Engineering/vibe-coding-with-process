@@ -4,7 +4,11 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-800 antialiased;
+    @apply bg-[#F5F5F5] text-[#1A1A1A] antialiased text-sm;
+    font-family: -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", "맑은 고딕", sans-serif;
+  }
+  * {
+    box-sizing: border-box;
   }
 }
 
@@ -15,5 +19,11 @@
   }
   .scrollbar-hide::-webkit-scrollbar {
     display: none;
+  }
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 }
